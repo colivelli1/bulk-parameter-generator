@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Custom Parameter Generator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Use Inter font */
+        body {
+            font-family: "Inter", sans-serif;
+        }
+
+        /* Custom styles for better textarea/input focus */
+        textarea:focus,
+        input[type="text"]:focus,
+        select[id="space_replace"]:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px #93c5fd !important;
+            outline: none !important;
+        }
+
+        /* Simple transition for buttons */
+        button {
+            transition: all 0.15s ease-in-out;
+        }
+
+        /* Custom styling for the generated links container */
+        #output-container {
+            background-color: #f9fafb;
+            /* Lighter gray for read-only */
+        }
+
+        /* --- SELECTION CHIP STYLES (for predefined options) --- */
+        .chip-container {
+            border: 1px solid #d1d5db;
+            /* border-gray-300 */
+            min-height: 50px;
+            transition: border-color 0.15s ease-in-out;
+            background-color: #ffffff;
+            /* Ensure white background */
+        }
+
+        .chip-container.disabled {
+            background-color: #f3f4f6;
+            /* bg-gray-100 */
+            cursor: not-allowed;
+        }
+
+        .chip-container.error-border {
+            border-color: #ef4444;
+            /* border-red-500 */
+            border-width: 2px;
+        }
+
+        .chip-label {
+            display: block;
+            background-color: #f3f4f6;
+            /* bg-gray-100 */
+            color: #4b5563;
+            /* text-gray-600 */
+            padding: 4px 12px;
+            border-radius: 9999px;
+            /* rounded-full */
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.1s;
+            user-select: none;
+            border: 1px solid #e5e7eb;
+            /* border-gray-200 */
+        }
+
+        .chip-input:checked+.chip-label {
+            background-color: #3b82f6;
+            /* bg-blue-500 */
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .chip-input:checked+.chip-label:hover {
+            background-color: #2563eb;
+            /* bg-blue-600 */
+        }
+
+        .chip-input {
+            display: none;
+            /* Hide the actual checkbox */
+        }
+
+        /* --- END SELECTION CHIP STYLES --- */
+
+
+        /* --- TAG/CHIP INPUT STYLES (for Sources) --- */
+        .tag-chip-container {
+            /* Ensure the container is clickable and flexible */
+            cursor: text;
+        }
+
+        .tag-input {
+            /* Style the input inside the chip container to blend in */
+            background: transparent;
+            line-height: 1.5;
+            height: auto;
+            border: none;
+            padding: 0;
+            margin: 0;
+            outline: none;
+            box-shadow: none;
+            /* Override focus ring for input within the custom container */
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .tag-chip-label {
+            /* Base chip style for dynamic tags */
+            display: flex;
+            align-items: center;
+            background-color: #3b82f6;
+            /* bg-blue-500 */
+            color: white;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            /* rounded-full */
+            font-size: 14px;
+            font-weight: 500;
+            user-select: none;
+            transition: background-color 0.1s;
+            margin-right: 4px;
+            /* for gap */
+            margin-bottom: 4px;
+            /* for wrap gap */
+        }
+
+        .tag-chip-label:hover {
+            background-color: #2563eb;
+        }
+
+        .tag-chip-label .close-btn {
+            margin-left: 6px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            line-height: 1;
+            /* Ensure 'x' is vertically centered */
+        }
+
+        .tag-chip-label .close-btn:hover {
+            color: white;
+        }
+
+        /* --- END TAG/CHIP INPUT STYLES --- */
+
+        /* --- AUTOCOMPLETE STYLES --- */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 50;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            /* Hidden by default */
+            margin-top: 4px;
+        }
+
+        .autocomplete-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #374151;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover {
+            background-color: #eff6ff;
+            /* bg-blue-50 */
+            color: #1d4ed8;
+            /* text-blue-700 */
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto max-w-7xl p-4 sm:p-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Bulk Parameter Generator</h1>
+            <p class="text-lg text-gray-600">Select an internal project to load presets, then choose your combinations
+                for: MC_ID, Source, Medium, utm_campaign, Content, Geo, Placement Site, and invsrc.</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <!-- ==== Left Column: INPUTS ==== -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg space-y-6">
+
+                <!-- 1. Request Details (NEW) -->
+                <section>
+                    <h2 class="text-2xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">
+                        1. Request Details
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Requestor (open text) -->
+                        <div>
+                            <label for="req_requestor" class="block text-sm font-medium text-gray-700">Requestor<span
+                                    class="text-red-500"> *</span></label>
+                            <input id="req_requestor" type="text"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2"
+                                placeholder="Your name or team">
+                        </div>
+
+                        <!-- DUE DATE (Read-Only) -->
+                        <div>
+                            <label for="req_due_date" class="block text-sm font-medium text-gray-700">DUE DATE<span
+                                    class="text-red-500"> *</span></label>
+                            <input id="req_due_date" type="text" readonly
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 bg-gray-100 text-gray-600 cursor-not-allowed"
+                                placeholder="MM/DD/YYYY">
+                        </div>
+
+                        <!-- Channel (Multi-Select Chips) -->
+                        <div>
+                            <label for="req_channel" class="block text-sm font-medium text-gray-700">Channel<span
+                                    class="text-red-500"> *</span></label>
+                            <div id="req_channel_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- NEW: Initiative (Tag-Chip Input with Autocomplete) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Initiative <span
+                                    class="text-red-500">*</span> <span class="text-xs text-gray-500">(Type to select
+                                    or enter new)</span></label>
+                            <!-- Wrapped in relative div for dropdown positioning -->
+                            <div class="relative">
+                                <div id="req_initiative_chips"
+                                    class="tag-chip-container chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2 items-center min-h-[50px]">
+                                    <input type="text" id="req_initiative_input" class="tag-input flex-grow min-w-[50px]"
+                                        placeholder="Type initiative name (e.g., Q1_Brand_Launch)" autocomplete="off">
+                                </div>
+                                <!-- Dropdown Container -->
+                                <div id="req_initiative_dropdown" class="autocomplete-dropdown"></div>
+                            </div>
+                        </div>
+
+                        <!-- Line of Business (dropdown) -->
+                        <div>
+                            <label for="req_lob" class="block text-sm font-medium text-gray-700">Line of
+                                Business<span class="text-red-500"> *</span></label>
+                            <div id="req_lob_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- Media Type (dropdown) -->
+                        <div>
+                            <label for="req_crm_campaign"
+                                class="block text-sm font-medium text-gray-700">Media Type<span
+                                    class="text-red-500"> *</span></label>
+                            <div id="req_crm_campaign_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- Destination Category (dropdown) -->
+                        <div>
+                            <label for="req_destination_category"
+                                class="block text-sm font-medium text-gray-700">Destination Category<span
+                                    class="text-red-500"> *</span></label>
+                            <div id="req_destination_category_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- Pillar (dropdown) -->
+                        <div>
+                            <label for="req_pillar" class="block text-sm font-medium text-gray-700">Pillar</label>
+                            <div id="req_pillar_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- Agency (dropdown) -->
+                        <div>
+                            <label for="req_agency" class="block text-sm font-medium text-gray-700">Agency</label>
+                            <div id="req_agency_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- Subject (dropdown) - Removed user input -->
+
+                        <!-- Product or service (dropdown) -->
+                        <div>
+                            <label for="req_product" class="block text-sm font-medium text-gray-700">Product or
+                                service<span class="text-red-500"> *</span></label>
+                            <div id="req_product_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                            </div>
+                        </div>
+
+                        <!-- Scheduled Start (Read-Only) -->
+                        <div>
+                            <label for="req_start" class="block text-sm font-medium text-gray-700">Scheduled
+                                Start<span class="text-red-500"> *</span></label>
+                            <input id="req_start_date" type="text" readonly
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 bg-gray-100 text-gray-600 cursor-not-allowed"
+                                placeholder="MM/DD/YYYY">
+                        </div>
+
+                        <!-- Scheduled End (Read-Only) -->
+                        <div>
+                            <label for="req_end" class="block text-sm font-medium text-gray-700">Scheduled End<span
+                                    class="text-red-500"> *</span></label>
+                            <input id="req_end_date" type="text" readonly
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 bg-gray-100 text-gray-600 cursor-not-allowed"
+                                placeholder="MM/DD/YYYY">
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- 2. DestinationURL -->
+                <section>
+                    <h2 class="text-2xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">2.
+                        DestinationURL</h2>
+                    <p class="text-sm text-gray-500 mb-4">The root URL you want to add parameters to.</p>
+                    <div>
+                        <label for="base_urls" class="block text-sm font-medium text-gray-700">DestinationURL <span
+                                class="text-red-500">*</span></label>
+                        <input type="text" id="base_urls" 
+                            class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3"
+                            placeholder="https://www.example.com/page1">
+                    </div>
+                </section>
+
+                <!-- 3. Core Parameters (Combinatorial) -->
+                <section>
+                    <h2 class="text-2xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">3. Core
+                        Parameters (Required)</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <!-- MC_ID Selection (Chip) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">MC_ID <span
+                                    class="text-red-500">*</span></label>
+                            <div id="utm_mc_id_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                                <!-- Chips rendered by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Source Selection (Tag-Chip Input) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Source <span
+                                    class="text-red-500">*</span> <span class="text-xs text-gray-500">(Type to select
+                                    or enter new)</span></label>
+                            <!-- Wrapped in relative div for dropdown positioning -->
+                            <div class="relative">
+                                <div id="utm_source_chips"
+                                    class="tag-chip-container chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2 items-center min-h-[50px]">
+                                    <input type="text" id="utm_source_input" class="tag-input flex-grow min-w-[50px]"
+                                        placeholder="Type sources (e.g., google, email)" autocomplete="off">
+                                </div>
+                                <!-- Dropdown Container -->
+                                <div id="utm_source_dropdown" class="autocomplete-dropdown"></div>
+                            </div>
+                        </div>
+
+                        <!-- Medium Selection REMOVED FROM UI (Automated) -->
+
+                        <!-- utm_campaign Selection (Chip) -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">utm_campaign <span
+                                    class="text-red-500">*</span></label>
+                            <div id="utm_utm_campaign_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                                <!-- Chips rendered by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Content Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Content <span
+                                    class="text-red-500">*</span> <span
+                                    class="text-xs text-gray-500">(Enter, paste list, or comma separated)</span></label>
+                            <div id="utm_content_chips"
+                                class="tag-chip-container chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2 items-center min-h-[50px]">
+                                <input type="text" id="utm_content_input" class="tag-input flex-grow min-w-[50px]"
+                                    placeholder="Type content values (e.g., banner_blue_cta, hero_v1)">
+                            </div>
+                        </div>
+
+                        <!-- Geo Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Geo <span
+                                    class="text-red-500">*</span></label>
+                            <div id="utm_geo_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                                <!-- Chips rendered by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Placement Site Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Placement Site <span
+                                    class="text-red-500">*</span></label>
+                            <div id="utm_placement_site_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                                <!-- Chips rendered by JS -->
+                            </div>
+                        </div>
+
+                        <!-- invsrc Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">invsrc <span
+                                    class="text-gray-400">(Optional)</span></label>
+                            <div id="utm_invsrc_chips"
+                                class="chip-container mt-1 block w-full rounded-lg shadow-sm p-3 flex flex-wrap gap-2">
+                                <!-- Chips rendered by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Options -->
+                <section>
+                    <h2 class="text-2xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">5. Options</h2>
+                    <div class="flex flex-wrap gap-x-6 gap-y-4 items-center">
+                        <div class="flex items-center">
+                            <input id="lowercase" type="checkbox" checked
+                                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <label for="lowercase" class="ml-2 block text-sm font-medium text-gray-700">Enforce
+                                lowercase</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="space_replace" class="block text-sm font-medium text-gray-700">Replace spaces
+                                with:</label>
+                            <select id="space_replace"
+                                class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-1.5">
+                                <option value="_" selected>Underscore (_)</option>
+                                <option value="-">Hyphen (-)</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. Generate Button -->
+                <section>
+                    <button id="generate-btn"
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 active:bg-blue-800">
+                        Generate Links
+                    </button>
+                    <!-- Link Preview Message Area -->
+                    <div id="link-preview-message" class="text-blue-600 font-medium text-center mt-4"></div>
+                    <!-- Error Message Area -->
+                    <div id="error-message" class="text-red-600 font-medium text-center mt-4"></div>
+                </section>
+
+            </div>
+
+            <!-- ==== Right Column: OUTPUT ==== -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg space-y-4 flex flex-col">
+                <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-2">
+                    <h2 class="text-2xl font-semibold text-gray-800">7. Generated Links</h2>
+                    <div id="link-count" class="text-sm font-medium text-gray-500"></div>
+                </div>
+
+                <!-- Output Textarea -->
+                <div class="flex-grow flex">
+                    <textarea id="output" readonly
+                        class="w-full flex-grow rounded-lg border-gray-300 bg-gray-50 p-4 font-mono text-sm text-gray-700 resize-none shadow-inner"
+                        placeholder="Your generated links will appear here..."></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <button id="copy-btn"
+                        class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 active:bg-gray-100">
+                        Copy to Clipboard
+                    </button>
+                    <button id="download-btn"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 active:bg-green-800">
+                        Download as .csv
+                    </button>
+                </div>
+                <!-- Success Message Area -->
+                <div id="success-message" class="text-green-600 font-medium text-center h-4"></div>
+            </div>
+
+        </div> <!-- /end grid -->
+    </div> <!-- /end container -->
+
+    <script>
+        // DOM Elements
+        const campaignTypeSelectorEl = document.getElementById('campaign_type_selector');
+        const baseUrlsEl = document.getElementById('base_urls');
+        // Source elements
+        const utmSourceContainerEl = document.getElementById('utm_source_chips');
+        const utmSourceInputEl = document.getElementById('utm_source_input');
+        const lowercaseEl = document.getElementById('lowercase');
+        const spaceReplaceEl = document.getElementById('space_replace');
+        const generateBtn = document.getElementById('generate-btn');
+        const outputEl = document.getElementById('output');
+        const copyBtn = document.getElementById('copy-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const linkCountEl = document.getElementById('link-count');
+        const errorEl = document.getElementById('error-message');
+        const successEl = document.getElementById('success-message');
+        const linkPreviewEl = document.getElementById('link-preview-message');
+
+        let generatedData = []; // To store data for CSV export
+
+        // --- MEDIUM MAPPING (Full Name for Display, Code for Output) ---
+        const MEDIUM_MAP = {
+            'd': {
+                display: 'Ad - Online',
+                description: 'Online banner or display advertising'
+            },
+            'v': {
+                display: 'Ad - Video',
+                description: 'Video advertising'
+            },
+            'e': {
+                display: 'E-mail',
+                description: 'General email marketing'
+            },
+            'en': {
+                display: 'E-mail Newsletter',
+                description: 'Email newsletter campaigns'
+            },
+            'l': {
+                display: 'Link',
+                description: 'Direct links or cross-promotion'
+            },
+            's': {
+                display: 'Search',
+                description: 'Search traffic (Paid or Organic)'
+            },
+            'sm': {
+                display: 'Social Media',
+                description: 'Social media promotion (Paid or Organic)'
+            },
+            'b': {
+                display: 'Ad - Billboard',
+                description: 'Out-of-home advertising'
+            },
+            'p': {
+                display: 'Ad - Print',
+                description: 'Print advertisements'
+            },
+            'r': {
+                display: 'Ad - Radio',
+                description: 'Radio advertising'
+            },
+            'tv': {
+                display: 'Ad - TV',
+                description: 'Television advertising'
+            },
+            'br': {
+                display: 'Brochure',
+                description: 'Physical or digital brochure distribution'
+            },
+            'ev': {
+                display: 'Event',
+                description: 'Event-related promotions'
+            },
+            'dm': {
+                display: 'Direct Mail',
+                description: 'Direct mail campaigns'
+            },
+            'ns': {
+                display: 'News Story',
+                description: 'News story placement'
+            }
+        };
+
+        // --- NEW: MEDIA TYPE TO MEDIUM CODE MAPPING ---
+        const MEDIA_TYPE_TO_CODE = {
+            'Article': 'ns', // Mapped to News Story code
+            'Billboard': 'b',
+            'CTV': 'tv',
+            'Direct Mail': 'dm',
+            'Online Video': 'v',
+            'Social Media': 'sm',
+            'High Impact Video': 'v',
+            'High Impact Display': 'd',
+            'Native Display': 'd',
+            'Standard Display': 'd',
+            'Email': 'e',
+            'Event': 'ev',
+            'Podcast': 'r', 
+            'Website': 'l', 
+            'Listing': 'br', 
+            'Mobile App': 'd', 
+            'OTT': 'tv',
+            'Print': 'p',
+            'Search': 's'
+        };
+
+        // --- NEW: CAMPAIGN CODE MAPPING (from user's CSV) ---
+        // Key is "medium_short_code|utm_campaign_value"
+        const CAMPAIGN_CODE_MAP = {
+            // HLP
+            'd|hlp': 'CMP-01130-Y4B7N4',
+            'v|hlp': 'CMP-01177-D8Y7T9',
+            'e|hlp': 'CMP-01135-R4J7V8',
+            'en|hlp': 'CMP-01136-K3F7M1',
+            'l|hlp': 'CMP-01139-B9Y7B7',
+            's|hlp': 'CMP-01142-N4Q1W9',
+            'sm|hlp': 'CMP-01144-D4W4T8',
+            'b|hlp': 'CMP-01129-Z5D9T6',
+            'p|hlp': 'CMP-01131-S0D0Y1',
+            'r|hlp': 'CMP-01132-H7B8N9',
+            'tv|hlp': 'CMP-01133-Y9Q9Q5',
+            'br|hlp': 'CMP-01146-H2X1T2',
+            'dm|hlp': 'CMP-01134-V4C1Z3',
+            'ev|hlp': 'CMP-01138-L8G5H3',
+            'ns|hlp': 'CMP-01140-M5H4Z7',
+            // mayoclinic
+            'd|mayoclinic': 'CMP-01156-V8C5Y1',
+            'v|mayoclinic': 'CMP-01178-Q8G5K6',
+            'e|mayoclinic': 'CMP-01166-P6K4W7',
+            'en|mayoclinic': 'CMP-01167-L9V7B1',
+            'l|mayoclinic': 'CMP-01170-S3P8S9',
+            's|mayoclinic': 'CMP-01173-B5B3K3',
+            'sm|mayoclinic': 'CMP-01175-V4N1Q5',
+            'b|mayoclinic': 'CMP-01158-W9Z1K1',
+            'p|mayoclinic': 'CMP-01160-F8R4D4',
+            'r|mayoclinic': 'CMP-01161-X1T3Q8',
+            'tv|mayoclinic': 'CMP-01162-C7W3Y3',
+            'br|mayoclinic': 'CMP-01163-M0J4T6',
+            'dm|mayoclinic': 'CMP-01165-N7Y2N9',
+            'ev|mayoclinic': 'CMP-01169-H4F3G4',
+            'ns|mayoclinic': 'CMP-01172-X0J4R7',
+            // medprof
+            'en|medprof': 'CMP-01182-N6M9F1',
+            'v|medprof': 'CMP-01488-P7P8L5',
+            'e|medprof': 'CMP-01489-G8G2S2',
+            'l|medprof': 'CMP-01490-N3W3H1',
+            's|medprof': 'CMP-01491-S8G4Y2',
+            'sm|medprof': 'CMP-01492-B9F6S6',
+            'd|medprof': 'CMP-01487-H8F2J7',
+            'b|medprof': 'CMP-01596-N9D8W4'
+            // Add other medprof codes if available in the full CSV
+        };
+
+        // --- CUSTOM PARAMETER MAPPING ---
+        // Maps the JS internal key (snake_case) to the display name, URL parameter name, and input type/ID
+        const PARAMETER_MAP = {
+            // Core/Required
+            'mc_id': {
+                displayName: 'MC_ID',
+                urlParam: 'MC_ID',
+                containerId: 'utm_mc_id_chips',
+                isRequired: true,
+                inputType: 'chip'
+            },
+            'source': {
+                displayName: 'Source',
+                urlParam: 'Source',
+                containerId: 'utm_source_chips',
+                inputId: 'utm_source_input',
+                isRequired: true,
+                inputType: 'tag-chip'
+            },
+            'medium': {
+                displayName: 'Medium',
+                urlParam: 'Medium',
+                containerId: 'utm_medium_chips',
+                isRequired: true, // Will be derived
+                inputType: 'chip'
+            }, // Uses MEDIUM_MAP
+            'utm_campaign': {
+                displayName: 'utm_campaign',
+                urlParam: 'utm_campaign',
+                containerId: 'utm_utm_campaign_chips',
+                isRequired: true,
+                inputType: 'chip'
+            },
+
+            // Optional
+            'content': {
+                displayName: 'Content',
+                urlParam: 'Content',
+                containerId: 'utm_content_chips',
+                inputId: 'utm_content_input',
+                isRequired: true,
+                inputType: 'tag-chip'
+            },
+            'geo': {
+                displayName: 'Geo',
+                urlParam: 'Geo',
+                containerId: 'utm_geo_chips',
+                isRequired: true,
+                inputType: 'chip'
+            },
+            'placement_site': {
+                displayName: 'Placement Site',
+                urlParam: 'PlacementSite',
+                containerId: 'utm_placement_site_chips',
+                isRequired: true,
+                inputType: 'chip'
+            },
+            'invsrc': {
+                displayName: 'invsrc',
+                urlParam: 'invsrc',
+                containerId: 'utm_invsrc_chips',
+                isRequired: false, // Changed to false
+                inputType: 'chip'
+            },
+        };
+        const ALL_PARAM_KEYS = Object.keys(PARAMETER_MAP);
+
+        // --- CAMPAIGN PRESETS DEFINITION (Medium values use the confirmed short codes) ---
+        const CAMPAIGN_PRESETS = {
+            'default': {
+                mc_id: ['us', 'global'],
+                source: [], // We will use the AUTOCOMPLETE options instead of presets for Source now
+                medium: ['s', 'sm', 'e', 'd', 'v', 'l'],
+                utm_campaign: ['mayoclinic', 'medprof', 'hlp', 'smc'],
+                content: [],
+                geo: ['midwest', 'southwest', 'southeast'],
+                placement_site: ['enterprise', 'minnesota', 'florida', 'arizona'],
+                invsrc: ['arizona', 'azbariatric', 'azgyn', 'can', 'cancer', 'cayman', 'cfm', 'consult', 'deptsurgery', 'digestive', 'edi', 'ent', 'florida', 'gbs', 'heart', 'hlp', 'hlpspa', 'india', 'medprof', 'middleeast', 'minnesota', 'neuro', 'ortho', 'other', ],
+                required: [],
+            },
+        };
+
+        // --- SECTION 1: REQUEST DETAILS (CHIP OPTIONS + RENDERERS) ---
+        const REQUEST_CHIP_OPTIONS = {
+            lob: ['Marketing', 'Medprof', 'SMC', 'HLP'],
+            // UPDATED: CRM_Campaign (renamed Media Type) selections
+            crm_campaign: [
+                'Article', 
+                'Billboard', 
+                'CTV', 
+                'Direct Mail', 
+                'Email', 
+                'Event', 
+                'High Impact Display', 
+                'High Impact Video', 
+                'Listing', 
+                'Mobile App', 
+                'Native Display', 
+                'Online Video', 
+                'OTT', 
+                'Podcast', 
+                'Print', 
+                'Search', 
+                'Social Media', 
+                'Standard Display', 
+                'Website'
+            ],
+            destination_category: ['possible', 'innovation', 'sportsmedicine'], // NEW: Destination Category
+            pillar: ['Inspire', 'Inform', 'Action'],
+            agency: ['Internal', 'HMI', 'Novus', 'MSL', 'Tonic', 'Lux&Gravis', 'Reach Local', 'ABCW'],
+            product: ['Cardiology', 'Oncology', 'Neurology', 'Primary Care', 'Transplant', 'Orthopedics'],
+            channel: ['Paid', 'Owned', 'Earned']
+        };
+
+        // --- PREDEFINED TAG-CHIP OPTIONS ---
+
+        // Sources (used by utm_source_input)
+        const PREDEFINED_SOURCES = [
+            'google', 'facebook', 'linkedin', 'twitter', 'instagram', 'youtube', 'tiktok', 'bing', 'yahoo',
+            'email', 'newsletter', 'qrcode', 'offline', 'billboard', 'tv', 'radio', 'partner',
+            'adroll', 'taboola', 'outbrain', 'reddit', 'pinterest', 'quora', 'referral', 'programmatic',
+            'display', 'paid_search', 'organic_social', 'paid_social', 'mnweekly'
+        ];
+        
+        // NEW: Initiatives (used by req_initiative_input) - UPDATED LIST
+        const PREDEFINED_INITIATIVES = [
+            'Brand - Baseline - Cancer', 
+            'IMDG - Florida - Cancer',
+            'IMDG - Florida -',
+            'IMDG - Minnesota - Cancer',
+            'PATM - Kidney Cancer',
+            'PATM - Lung Cancer'
+        ];
+
+        // Render a simple chip group into a container id with a list of string options
+        function renderSimpleChips(containerId, namePrefix, options, inputType = 'checkbox') {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.classList.remove('disabled');
+            container.innerHTML = '';
+
+            options.forEach((value, index) => {
+                const id = `${containerId}_${index}`;
+
+                const input = document.createElement('input');
+                input.type = inputType; // Use passed input type (checkbox/radio)
+                input.id = id;
+                input.name = `${namePrefix}_selection`; // Radio buttons share same name
+                input.value = value;
+                input.className = 'chip-input';
+
+                const label = document.createElement('label');
+                label.htmlFor = id;
+                label.className = 'chip-label';
+                label.textContent = value;
+
+                container.appendChild(input);
+                container.appendChild(label);
+            });
+        }
+
+        // initialize all Section 1 chip groups
+        function initRequestChips() {
+            // Radio buttons (Single Select)
+            renderSimpleChips('req_lob_chips', 'req_lob', REQUEST_CHIP_OPTIONS.lob, 'radio');
+            renderSimpleChips('req_crm_campaign_chips', 'req_crm_campaign', REQUEST_CHIP_OPTIONS.crm_campaign, 'radio');
+            renderSimpleChips('req_destination_category_chips', 'req_destination_category', REQUEST_CHIP_OPTIONS.destination_category, 'radio'); // NEW: Single Select
+            renderSimpleChips('req_pillar_chips', 'req_pillar', REQUEST_CHIP_OPTIONS.pillar, 'radio');
+            renderSimpleChips('req_agency_chips', 'req_agency', REQUEST_CHIP_OPTIONS.agency, 'radio');
+            renderSimpleChips('req_product_chips', 'req_product', REQUEST_CHIP_OPTIONS.product, 'radio');
+            
+            // Checkboxes (Multi Select)
+            renderSimpleChips('req_channel_chips', 'req_channel', REQUEST_CHIP_OPTIONS.channel); // Channel remains multi
+        }
+
+        // read Section 1 values for CSV (chips are joined by "; ")
+        function getRequestMeta() {
+            const readChips = (containerId) =>
+                Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map(i => i.value);
+            
+            // Function to read tag-chips for request metadata (only Initiative here, but generic logic)
+            const readTagChipsMeta = (containerId) =>
+                Array.from(document.querySelectorAll(`#${containerId} .tag-chip-label`)).map(c => c.dataset.value).join('; ');
+
+            return {
+                requestor: (document.getElementById('req_requestor')?.value || '').trim(),
+                due_date: (document.getElementById('req_due_date')?.value || '').trim(),
+                channel: readChips('req_channel_chips').join('; '), // Channel
+                initiative: readTagChipsMeta('req_initiative_chips'), // NEW INITIATIVE META
+                lob: readChips('req_lob_chips').join('; '),
+                crm_campaign: readChips('req_crm_campaign_chips').join('; '), // Renamed in UI/Header, but key remains 'crm_campaign'
+                destination_category: readChips('req_destination_category_chips').join('; '), // NEW: Destination Category
+                pillar: readChips('req_pillar_chips').join('; '),
+                agency: readChips('req_agency_chips').join('; '),
+                // subject: readChips('req_subject_chips').join('; '), // Removed
+                product: readChips('req_product_chips').join('; '),
+                start: (document.getElementById('req_start_date')?.value || '').trim(),
+                end: (document.getElementById('req_end_date')?.value || '').trim()
+            };
+        }
+
+
+        let CURRENT_PRESETS = CAMPAIGN_PRESETS['default'];
+
+        // --- CHIP RENDERING LOGIC (for preset chips) ---
+
+        /**
+         * Renders the chips for a specific parameter based on CURRENT_PRESETS.
+         * Only runs for parameters configured as 'chip' input type.
+         * For 'medium', it renders ALL available options in the MEDIUM_MAP.
+         * @param {string} paramKey - The JS key of the parameter (e.g., 'mc_id').
+         */
+        function renderSelectionChips(paramKey) {
+            const config = PARAMETER_MAP[paramKey];
+            if (config.inputType !== 'chip') return; // Skip if not a chip input
+
+            const container = document.getElementById(config.containerId);
+            if (!container) return;
+
+            // Clear previous chips
+            container.innerHTML = '';
+
+            // Determine the options list to render
+            const isMedium = paramKey === 'medium';
+            let options = [];
+
+            if (isMedium) {
+                // *** MODIFIED LOGIC: Always show ALL available Mediums ***
+                options = Object.keys(MEDIUM_MAP);
+            } else {
+                // For all other parameters, use the currently selected preset list
+                options = CURRENT_PRESETS[paramKey] || [];
+            }
+
+            container.classList.remove('disabled');
+
+            // If there are no options, display a helpful message (only applies to non-medium presets now)
+            if (options.length === 0) {
+                const message = document.createElement('span');
+                message.textContent = `No preset options available for this campaign type.`;
+                message.className = 'text-gray-500 italic text-sm p-2';
+                container.appendChild(message);
+                return;
+            }
+
+            // Determine input type (radio for MC_ID, checkbox for others)
+            const isSingleSelect = paramKey === 'mc_id';
+            const inputType = isSingleSelect ? 'radio' : 'checkbox';
+
+            options.forEach((value, index) => {
+                const id = `chip_${paramKey}_${index}`;
+
+                // Determine the display text (long name for Medium, short code for others)
+                // The value itself (e.g., 'd', 'e', 'sm') is used as the key for MEDIUM_MAP
+                const labelText = isMedium && MEDIUM_MAP[value] ? MEDIUM_MAP[value].display : value;
+
+                // Checkbox/Radio input (hidden)
+                const input = document.createElement('input');
+                input.type = inputType;
+                input.id = id;
+                input.name = `utm_${paramKey}_selection`;
+                input.value = value; // Value MUST be the short code (d, v, e, etc.) for URL generation
+                input.className = 'chip-input';
+                input.dataset.paramKey = paramKey;
+
+                // Label (styled as the chip)
+                const label = document.createElement('label');
+                label.htmlFor = id;
+                label.className = 'chip-label';
+                label.textContent = labelText;
+
+                container.appendChild(input);
+                container.appendChild(label);
+            });
+        }
+
+        // ---------- TAG-CHIP GENERIC HELPERS ----------
+
+        // This helper is extended to handle both UTM parameters (Source/Content) and Request Metadata (Initiative)
+        function getTagEls(paramKey) {
+            // Check UTM parameters first (section 3)
+            const paramConfig = PARAMETER_MAP[paramKey];
+            if (paramConfig && paramConfig.inputType === 'tag-chip') {
+                return {
+                    containerId: paramConfig.containerId,
+                    inputId: paramConfig.inputId,
+                    containerEl: document.getElementById(paramConfig.containerId),
+                    inputEl: document.getElementById(paramConfig.inputId)
+                };
+            }
+            
+            // Check Request Metadata (section 1) - Initiative
+            if (paramKey === 'initiative') {
+                return {
+                    containerId: 'req_initiative_chips',
+                    inputId: 'req_initiative_input',
+                    containerEl: document.getElementById('req_initiative_chips'),
+                    inputEl: document.getElementById('req_initiative_input')
+                };
+            }
+
+            return {}; // Fallback
+        }
+
+        function createTagChip(paramKey, value) {
+            const {
+                containerEl,
+                inputEl
+            } = getTagEls(paramKey);
+            const trimmedValue = (value || '').trim();
+            if (!trimmedValue || !containerEl || !inputEl) return;
+
+            // de-dupe (case-insensitive)
+            const existing = Array.from(containerEl.querySelectorAll('.tag-chip-label'))
+                .map(el => el.dataset.value.toLowerCase());
+            if (existing.includes(trimmedValue.toLowerCase())) return;
+
+            const chip = document.createElement('span');
+            chip.className = 'tag-chip-label';
+            chip.dataset.value = trimmedValue;
+
+            const textSpan = document.createElement('span');
+            textSpan.textContent = trimmedValue;
+            chip.appendChild(textSpan);
+
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = function() {
+                chip.remove();
+                validateInputs();
+            };
+            chip.appendChild(closeBtn);
+
+            containerEl.insertBefore(chip, inputEl);
+            inputEl.value = '';
+            containerEl.classList.remove('error-border');
+        }
+
+        function handleTagKey(paramKey, event) {
+            const {
+                containerEl,
+                inputEl
+            } = getTagEls(paramKey);
+            if (!containerEl || !inputEl) return;
+
+            const value = inputEl.value;
+
+            if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                value
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                    .forEach(v => createTagChip(paramKey, v));
+            } else if (event.key === 'Backspace' && value === '') {
+                const chips = containerEl.querySelectorAll('.tag-chip-label');
+                if (chips.length) {
+                    chips[chips.length - 1].remove();
+                    validateInputs();
+                }
+            }
+        }
+
+        function handleTagBlur(paramKey) {
+            const {
+                inputEl
+            } = getTagEls(paramKey);
+            if (!inputEl) return;
+
+            const value = inputEl.value;
+            if (value && value.trim()) {
+                value
+                    .split(/[\n,]+/)
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                    .forEach(v => createTagChip(paramKey, v));
+            }
+        }
+
+        function attachTagInput(paramKey) {
+            const {
+                containerEl,
+                inputEl
+            } = getTagEls(paramKey);
+            if (!containerEl || !inputEl) return;
+
+            inputEl.addEventListener('keydown', (e) => handleTagKey(paramKey, e));
+            inputEl.addEventListener('blur', () => {
+                // Delayed blur to allow click on dropdown items
+                setTimeout(() => {
+                    handleTagBlur(paramKey);
+                    // Hide dropdown for both source and initiative
+                    const dropdownId = paramKey === 'source' ? 'utm_source_dropdown' : 'req_initiative_dropdown';
+                    const dropdown = document.getElementById(dropdownId);
+                    if (dropdown) dropdown.style.display = 'none';
+                }, 200);
+            });
+
+            // --- Handle Paste (Excel columns, etc.) ---
+            inputEl.addEventListener('paste', (e) => {
+                e.preventDefault(); // Prevent default paste behavior
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+
+                // Split by newlines (Excel behavior) or commas
+                const values = paste.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+
+                if (values.length > 0) {
+                    values.forEach(v => createTagChip(paramKey, v));
+                    inputEl.value = ''; // Clear the input
+                    validateInputs(); // Re-validate
+                }
+            });
+            // --- END Handle Paste ---
+
+            containerEl.addEventListener('click', (e) => {
+                if (e.target === containerEl) inputEl.focus();
+            });
+
+            // --- AUTOCOMPLETE ATTACHMENT ---
+            if (paramKey === 'source') {
+                attachAutocomplete(paramKey, 'utm_source_dropdown', PREDEFINED_SOURCES);
+            } else if (paramKey === 'initiative') {
+                 attachAutocomplete(paramKey, 'req_initiative_dropdown', PREDEFINED_INITIATIVES);
+            }
+        }
+
+        // --- AUTOCOMPLETE LOGIC ---
+        function attachAutocomplete(paramKey, dropdownId, options) {
+            const {
+                inputEl
+            } = getTagEls(paramKey);
+            const dropdownEl = document.getElementById(dropdownId);
+
+            if (!inputEl || !dropdownEl) return;
+
+            // Handle Input Typing
+            inputEl.addEventListener('input', function() {
+                const value = this.value.toLowerCase().trim();
+
+                // Filter options
+                const matches = options.filter(opt => opt.toLowerCase().includes(value));
+
+                if (value.length > 0 && matches.length > 0) {
+                    // Build Dropdown
+                    dropdownEl.innerHTML = '';
+                    matches.forEach(match => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        div.textContent = match;
+
+                        // Click Event
+                        div.addEventListener('click', (e) => {
+                            e.preventDefault(); // Prevent default focus loss behavior
+                            createTagChip(paramKey, match);
+                            inputEl.value = ''; // Clear input
+                            dropdownEl.style.display = 'none'; // Hide dropdown
+                            inputEl.focus(); // Keep focus
+                        });
+
+                        dropdownEl.appendChild(div);
+                    });
+                    dropdownEl.style.display = 'block';
+                } else {
+                    dropdownEl.style.display = 'none';
+                }
+            });
+        }
+        // ---------- END TAG-CHIP GENERIC HELPERS ----------
+
+
+        // --- DATE CALCULATION HELPERS ---
+        function formatDate(date) {
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            return `${mm}/${dd}/${yyyy}`;
+        }
+
+        function addBusinessDays(startDate, daysToAdd) {
+            let currentDate = new Date(startDate);
+            let addedDays = 0;
+            while (addedDays < daysToAdd) {
+                currentDate.setDate(currentDate.getDate() + 1);
+                const dayOfWeek = currentDate.getDay(); // 0 is Sunday, 6 is Saturday
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    addedDays++;
+                }
+            }
+            return currentDate;
+        }
+        // --- END DATE CALCULATION HELPERS ---
+
+
+        // --- GENERAL LOGIC ---
+
+        /**
+         * Updates the global presets and rerenders all chip sections.
+         */
+        function handleCampaignChange() {
+            // if the selector is missing, fall back to 'default'
+            const selectedType = campaignTypeSelectorEl?.value || 'default';
+            CURRENT_PRESETS = CAMPAIGN_PRESETS[selectedType] || CAMPAIGN_PRESETS['default'];
+
+            // Rerender only chip sections (PARAMETER_MAP-driven)
+            ALL_PARAM_KEYS.forEach(paramKey => {
+                if (PARAMETER_MAP[paramKey].inputType === 'chip') {
+                    renderSelectionChips(paramKey);
+                }
+            });
+
+            // updateOptionalLabels(); // Not needed since all are required
+            errorEl.textContent = '';
+        }
+
+
+        /**
+         * Updates the required/optional labels and styling based on the current preset.
+         */
+        function updateOptionalLabels() {
+            const requiredFields = CURRENT_PRESETS.required || [];
+
+            ALL_PARAM_KEYS.forEach(paramKey => {
+                const config = PARAMETER_MAP[paramKey];
+
+                // Only update labels for non-required fields (Section 4)
+                if (!config.isRequired && config.inputType === 'chip') { // Only update chip-based optional fields
+                    const labelSpan = document.querySelector(`#${config.containerId}`).previousElementSibling.querySelector('span');
+
+                    if (requiredFields.includes(paramKey)) {
+                        labelSpan.textContent = '* (Required)';
+                        labelSpan.className = 'text-red-500';
+                    } else {
+                        labelSpan.textContent = '(Optional)';
+                        labelSpan.className = 'text-gray-400';
+                    }
+                }
+            });
+        }
+
+        /**
+         * Cleans a string based on the user's options.
+         * @param {string} str - The string to clean.
+         * @returns {string} The cleaned string.
+         */
+        function cleanParam(str) {
+            if (!str) return '';
+            let cleaned = str.trim();
+            if (lowercaseEl.checked) {
+                cleaned = cleaned.toLowerCase();
+            }
+            const spaceReplacer = spaceReplaceEl.value;
+            cleaned = cleaned.replace(/\s+/g, spaceReplacer);
+            return cleaned;
+        }
+
+        /**
+         * Gets the list of selected values for a given parameter, handling both chips and tag-chips.
+         * For 'medium', this returns the short code (d, v, e, etc.).
+         * @param {string} paramKey - The JS key of the parameter (e.g., 'mc_id').
+         * @returns {string[]} An array of selected values.
+         */
+        function getSelectedValues(paramKey) {
+            const config = PARAMETER_MAP[paramKey];
+
+            if (config.inputType === 'tag-chip') {
+                const chips = document.querySelectorAll(`#${config.containerId} .tag-chip-label`);
+                // Use the dataset.value which stores the original trimmed string
+                return Array.from(chips).map(chip => chip.dataset.value).filter(Boolean);
+            } else {
+                // Chip logic (for predefined options)
+                const selector = `#${config.containerId} input:checked`;
+                const checkedInputs = document.querySelectorAll(selector);
+                return Array.from(checkedInputs).map(input => input.value); // input.value holds the short code for Medium
+            }
+        }
+
+        // --- Validation Helper Functions ---
+        /**
+         * Validates a text input or textarea field.
+         * @param {string} id - The ID of the input element.
+         * @param {string} name - The display name of the field for error messages.
+         * @returns {boolean} True if valid, false otherwise.
+         */
+        function validateField(id, name) {
+            const el = document.getElementById(id);
+            if (el && !el.value.trim()) {
+                if (errorEl.textContent === '') { // Show first error
+                    errorEl.textContent = `${name} is required.`;
+                }
+                el.style.borderColor = '#ef4444';
+                el.style.borderWidth = '2px';
+                return false;
+            }
+            if (el) { // Reset style if valid
+                el.style.borderColor = '#d1d5db';
+                el.style.borderWidth = '1px';
+            }
+            return true;
+        }
+
+        /**
+         * Validates a chip container (predefined or tag-based).
+         * @param {string} containerId - The ID of the chip container.
+         * @param {string} name - The display name of the field for error messages.
+         * @param {boolean} isTagChip - Whether it's a tag-chip input.
+         * @returns {boolean} True if valid, false otherwise.
+         */
+        function validateChips(containerId, name, isTagChip = false) {
+            const container = document.getElementById(containerId);
+            const selector = isTagChip ? '.tag-chip-label' : 'input:checked';
+            const items = container.querySelectorAll(selector);
+
+            if (items.length === 0) {
+                if (errorEl.textContent === '') { // Show first error
+                    errorEl.textContent = `${name} is required.`;
+                }
+                container.classList.add('error-border');
+                return false;
+            }
+            container.classList.remove('error-border');
+            return true;
+        }
+        // --- End Validation Helpers ---
+
+        /**
+         * Validates all required inputs.
+         * @returns {boolean} True if valid, false otherwise.
+         */
+        function validateInputs() {
+            let isValid = true;
+            errorEl.textContent = ''; // Clear errors
+
+            // 1. Reset styles
+            document.querySelectorAll('.chip-container, input[type="text"], textarea').forEach(el => {
+                el.style.borderColor = '#d1d5db';
+                el.style.borderWidth = '1px';
+                el.classList.remove('error-border');
+            });
+
+            // 2. Validate Section 1
+            if (!validateField('req_requestor', 'Requestor')) isValid = false;
+            if (!validateField('req_due_date', 'DUE DATE')) isValid = false;
+            if (!validateChips('req_channel_chips', 'Channel')) isValid = false;
+            if (!validateChips('req_initiative_chips', 'Initiative', true)) isValid = false; 
+            if (!validateChips('req_lob_chips', 'Line of Business')) isValid = false;
+            if (!validateChips('req_crm_campaign_chips', 'Media Type')) isValid = false; // Updated Label
+            if (!validateChips('req_destination_category_chips', 'Destination Category')) isValid = false; // NEW VALIDATION
+            if (!validateChips('req_pillar_chips', 'Pillar')) isValid = false;
+            if (!validateChips('req_agency_chips', 'Agency')) isValid = false;
+            if (!validateChips('req_product_chips', 'Product or service')) isValid = false;
+            if (!validateField('req_start_date', 'Scheduled Start')) isValid = false;
+            if (!validateField('req_end_date', 'Scheduled End')) isValid = false;
+
+            // 3. DestinationURL validation
+            if (!validateField('base_urls', 'DestinationURL')) isValid = false;
+
+            // 4. Check all Section 3 parameters (now all required)
+            ALL_PARAM_KEYS.forEach(paramKey => {
+                const config = PARAMETER_MAP[paramKey];
+                const isTag = config.inputType === 'tag-chip';
+                // Skip validation for Medium since it's derived
+                if (paramKey === 'medium') return;
+
+                if (!validateChips(config.containerId, config.displayName, isTag)) {
+                    isValid = false;
+                }
+            });
+
+            return isValid;
+        }
+
+        /**
+         * Main function to generate the URLs.
+         */
+        function generateLinks() {
+            // Commit any pending text in tag-chip fields
+            Object.keys(PARAMETER_MAP)
+                .filter(k => k === 'source' || k === 'content')
+                .forEach(handleTagBlur);
+            handleTagBlur('initiative'); // Apply blur to new Initiative field
+
+
+            if (!validateInputs()) {
+                return;
+            }
+
+            const reqMeta = getRequestMeta();
+
+
+            // Clear previous output
+            outputEl.value = '';
+            linkCountEl.textContent = '';
+            linkPreviewEl.textContent = '';
+            generatedData = [];
+
+            // Prepare parameter lists
+            // CHANGED: Base URL is now single input
+            const baseUrlVal = baseUrlsEl.value.trim();
+            const baseUrls = baseUrlVal ? [baseUrlVal] : [];
+
+            // Map parameter keys to their selected values (or [''] if optional/empty)
+            const paramLists = {};
+            ALL_PARAM_KEYS.forEach(paramKey => {
+                if (paramKey === 'medium') {
+                    // Derive Medium code from Media Type
+                    const mediaType = reqMeta.crm_campaign; // This holds the Media Type selection
+                    const derivedCode = MEDIA_TYPE_TO_CODE[mediaType] || 'd'; // Default to 'd' if not found
+                    paramLists[paramKey] = [derivedCode];
+                } else {
+                    const selected = getSelectedValues(paramKey);
+                    // For looping: use selected values if non-empty, otherwise use ['']
+                    paramLists[paramKey] = selected.length ? selected : [''];
+                }
+            });
+
+            // Calculate total number of links that will be generated
+            const totalLinks = baseUrls.length * paramLists.mc_id.length * paramLists.source.length * paramLists.medium.length * paramLists.utm_campaign.length *
+                paramLists.content.length * paramLists.geo.length * paramLists.placement_site.length * paramLists.invsrc.length;
+
+            if (totalLinks === 0) {
+                errorEl.textContent = "No combinations possible. Check required fields.";
+                return;
+            }
+
+            if (totalLinks > 50000) {
+                errorEl.textContent = `Error: This will generate ${totalLinks.toLocaleString()} links. The maximum allowed is 50,000 to prevent freezing.`;
+                linkPreviewEl.textContent = `Will generate ${totalLinks.toLocaleString()} links.`;
+                linkPreviewEl.classList.remove('text-blue-600');
+                linkPreviewEl.classList.add('text-red-600');
+                return;
+            }
+
+            linkPreviewEl.textContent = `Generating ${totalLinks.toLocaleString()} link(s)...`;
+            linkPreviewEl.classList.remove('text-red-600');
+            linkPreviewEl.classList.add('text-blue-600');
+
+            const finalUrls = [];
+            // --- CSV HEADER SETUP ---
+            // These are spreadsheet-only metadata columns (do not affect URL params)
+            const requestHeaders = [
+                'Requestor',
+                'DUE DATE',
+                'Channel',
+                'Initiative', 
+                'Line of Business',
+                'Media Type', // Updated Header
+                'Destination Category', // NEW HEADER
+                'Pillar',
+                'Agency',
+                'Subject',
+                'Product or service',
+                'Scheduled Start',
+                'Scheduled End'
+            ];
+
+            // Then add existing URL parameter columns
+            const csvHeaders = requestHeaders
+                .concat(['DestinationURL'])
+                .concat(ALL_PARAM_KEYS.map(key => PARAMETER_MAP[key].displayName))
+                .concat(['CampaignCode']) // Added 'CampaignCode' header before 'Final URL'
+                .concat(['Final URL']);
+
+            const csvData = [csvHeaders];
+
+
+            // Setup iterators for all parameters
+            const iterators = {
+                'mc_id': paramLists.mc_id,
+                'source': paramLists.source,
+                'medium': paramLists.medium,
+                'utm_campaign': paramLists.utm_campaign,
+                'content': paramLists.content,
+                'geo': paramLists.geo,
+                'placement_site': paramLists.placement_site,
+                'invsrc': paramLists.invsrc,
+            };
+
+            // Use nested iteration for all combinations
+            baseUrls.forEach(baseUrl => {
+                iterators.mc_id.forEach(mc_id => {
+                    iterators.source.forEach(source => {
+                        iterators.medium.forEach(medium => {
+                            iterators.utm_campaign.forEach(campaign => {
+                                iterators.content.forEach(content => {
+                                    iterators.geo.forEach(geo => {
+                                        iterators.placement_site.forEach(placement_site => {
+                                            iterators.invsrc.forEach(invsrc => {
+
+                                                // Collect raw values for CSV/cleaning (short codes for Medium here)
+                                                const rawValues = {
+                                                    mc_id,
+                                                    source,
+                                                    medium,
+                                                    utm_campaign: campaign,
+                                                    content,
+                                                    geo,
+                                                    placement_site,
+                                                    invsrc
+                                                };
+
+                                                // --- NEW: Generate dynamic Subject ---
+                                                // We use cleanParam to ensure consistency with lowercase/space replacement
+                                                const cleanSource = cleanParam(rawValues.source);
+                                                const cleanContent = cleanParam(rawValues.content);
+                                                let dynamicSubject = '';
+
+                                                if (cleanSource && cleanContent) {
+                                                    dynamicSubject = `${cleanSource}-${cleanContent}`;
+                                                } else if (cleanSource) {
+                                                    dynamicSubject = cleanSource;
+                                                } else if (cleanContent) {
+                                                    dynamicSubject = cleanContent;
+                                                }
+                                                // --- END NEW ---
+
+                                                // --- NEW: Get Campaign Code ---
+                                                const campaignCodeKey = `${rawValues.medium}|${rawValues.utm_campaign}`;
+                                                const dynamicCampaignCode = CAMPAIGN_CODE_MAP[campaignCodeKey] || ''; // Find code or return empty
+                                                // --- END NEW ---
+
+
+                                                const params = new URLSearchParams();
+
+                                                ALL_PARAM_KEYS.forEach(paramKey => {
+                                                    const rawValue = rawValues[paramKey];
+                                                    const config = PARAMETER_MAP[paramKey];
+                                                    const cleanedValue = cleanParam(rawValue);
+
+                                                    // Only append if the value is non-empty AND either required or explicitly selected (not just looping [''])
+                                                    const isRequired = (CURRENT_PRESETS.required || []).includes(paramKey) || config.isRequired;
+
+                                                    // Check if the parameter had any input selected/provided (i.e., the loop array was not [''])
+                                                    const wasSelected = paramLists[paramKey].length > 0 && paramLists[paramKey][0] !== '';
+
+                                                    // If we have a cleaned value AND either it's required, OR the user explicitly gave an optional value
+                                                    if (cleanedValue && (wasSelected || isRequired)) {
+                                                        // This uses the short code (d, v, e, etc.) for Medium
+                                                        params.append(config.urlParam, cleanedValue);
+                                                    }
+                                                });
+
+                                                // Build the final URL
+                                                // Use replace to fix double encoding of % in parameters (which URLSearchParams sometimes does)
+                                                const paramString = params.toString();
+
+                                                let finalUrl;
+                                                const cleanedBaseUrl = baseUrl.trim();
+                                                if (!cleanedBaseUrl) return;
+
+                                                if (paramString) {
+                                                    const separator = cleanedBaseUrl.includes('?') ? '&' : '?';
+                                                    finalUrl = `${cleanedBaseUrl}${separator}${paramString}`;
+                                                } else {
+                                                    finalUrl = cleanedBaseUrl;
+                                                }
+
+                                                finalUrls.push(finalUrl);
+
+                                                // Add row to CSV data
+                                                const csvRow = [
+                                                    // Spreadsheet-only metadata (in the order you asked)
+                                                    reqMeta.requestor,
+                                                    reqMeta.due_date,
+                                                    reqMeta.channel,
+                                                    reqMeta.initiative, // NEW ROW DATA
+                                                    reqMeta.lob,
+                                                    reqMeta.crm_campaign, // This is the CRM_Campaign data, now under the Media Type header
+                                                    reqMeta.destination_category, // NEW ROW DATA
+                                                    reqMeta.pillar,
+                                                    reqMeta.agency,
+                                                    dynamicSubject, // Use the new dynamic value
+                                                    reqMeta.product,
+                                                    reqMeta.start,
+                                                    reqMeta.end,
+                                                    // dynamicCampaignCode removed from here
+
+                                                    // Existing link-generation columns
+                                                    cleanedBaseUrl,
+                                                    rawValues.mc_id,
+                                                    rawValues.source,
+                                                    rawValues.medium,
+                                                    rawValues.utm_campaign,
+                                                    rawValues.content,
+                                                    rawValues.geo,
+                                                    rawValues.placement_site,
+                                                    rawValues.invsrc,
+                                                    dynamicCampaignCode, // Added new dynamic code before finalUrl
+                                                    finalUrl
+                                                ];
+                                                csvData.push(csvRow);
+
+
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+
+            // Display output
+            outputEl.value = finalUrls.join('\n');
+            linkCountEl.textContent = `Generated ${finalUrls.length.toLocaleString()} link(s)`;
+            generatedData = csvData;
+            linkPreviewEl.textContent = ''; // Clear preview message
+        }
+
+        /**
+         * Copies the generated links to the clipboard.
+         */
+        function copyToClipboard() {
+            if (!outputEl.value) {
+                showSuccessMessage('Nothing to copy!', true);
+                return;
+            }
+
+            outputEl.select();
+            document.execCommand('copy');
+            showSuccessMessage('Copied to clipboard!');
+        }
+
+        /**
+         * Downloads the generated data as a CSV file.
+         */
+        function downloadCSV() {
+            if (generatedData.length <= 1) { // 1 because header is always present
+                showSuccessMessage('Nothing to download!', true);
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            generatedData.forEach(rowArray => {
+                // Ensure array items are correctly quoted and escaped
+                let row = rowArray.map(item => `"${(item || '').toString().replace(/"/g, '""')}"`).join(",");
+                csvContent += row + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "custom_links.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showSuccessMessage('CSV downloaded!');
+        }
+
+        /**
+         * Shows a temporary success/error message.
+         * @param {string} message - The message to display.
+         * @param {boolean} [isError=false] - If true, show as an error.
+         */
+        function showSuccessMessage(message, isError = false) {
+            const el = isError ? errorEl : successEl;
+            el.textContent = message;
+            setTimeout(() => {
+                el.textContent = '';
+            }, 2500);
+        }
+
+        // --- Initialization and Event Listeners ---
+        window.onload = function() {
+            // 1) Section 1 chips
+            initRequestChips();
+
+            // 2) UTM sections (works even if campaign_type_selector is absent)
+            handleCampaignChange();
+
+            // 3) Tag-chip behavior for UTM Params (Source & Content)
+            Object.keys(PARAMETER_MAP)
+                .filter(k => k === 'source' || k === 'content')
+                .forEach(attachTagInput);
+            
+            // 3b) Tag-chip behavior for Request Metadata (Initiative)
+            attachTagInput('initiative');
+
+
+            // 4) Auto-calculate Dates
+            const today = new Date();
+
+            // Calculate 10 business days from today
+            const businessDayTarget = addBusinessDays(today, 10);
+            const formattedBusinessDate = formatDate(businessDayTarget);
+
+            // Calculate End of Current Year
+            const currentYear = today.getFullYear();
+            const endOfYearDate = new Date(currentYear, 11, 31); // Month is 0-indexed (11 = Dec)
+            const formattedEndOfYear = formatDate(endOfYearDate);
+
+            // Set Values
+            const dueEl = document.getElementById('req_due_date');
+            const startEl = document.getElementById('req_start_date');
+            const endEl = document.getElementById('req_end_date');
+
+            if (dueEl) dueEl.value = formattedBusinessDate;
+            if (startEl) startEl.value = formattedBusinessDate;
+            if (endEl) endEl.value = formattedEndOfYear;
+        };
+
+
+        // Keep your existing button listeners:
+        generateBtn.addEventListener('click', generateLinks);
+        copyBtn.addEventListener('click', copyToClipboard);
+        downloadBtn.addEventListener('click', downloadCSV);
+
+        // Make the container clickable to focus the input
+        if (utmSourceContainerEl) {
+            utmSourceContainerEl.addEventListener('click', (event) => {
+                // Only focus input if the container itself (or empty space) is clicked
+                if (event.target === utmSourceContainerEl) {
+                    document.getElementById('utm_source_input').focus();
+                }
+            });
+        }
+
+        const reqInitiativeContainerEl = document.getElementById('req_initiative_chips');
+        if (reqInitiativeContainerEl) {
+            reqInitiativeContainerEl.addEventListener('click', (event) => {
+                // Only focus input if the container itself (or empty space) is clicked
+                if (event.target === reqInitiativeContainerEl) {
+                    document.getElementById('req_initiative_input').focus();
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
